@@ -1,0 +1,8 @@
+processed_data_path: data/processed/churn_cleaned.csv
+target_column: Churn
+test_size: 0.2
+random_state: 42
+experiment_name: customer-churn-baseline
+registered_model_name: customer-churn-logistic-regression
+tracking_uri: sqlite:///mlflow.db
+serving_model_path: models/customer_churn_pipeline

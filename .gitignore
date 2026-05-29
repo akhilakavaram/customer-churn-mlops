@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data and model artifacts can get large. We will add DVC later.
+data/raw/*.csv
+data/processed/*.csv
+mlruns/
+models/
+
+# Local environment files
+.env
+.DS_Store
+Thumbs.db
