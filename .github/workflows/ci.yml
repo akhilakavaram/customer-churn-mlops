@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Download dataset
+        run: |
+          mkdir -p data/raw
+          curl -L \
+            "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv" \
+            -o data/raw/telco_customer_churn.csv
+
+      - name: Prepare data
+        run: python -m src.data.prepare_data
+
+      - name: Train serving model
+        run: python -m src.models.train_model
+
+      - name: Run tests
+        run: python -m pytest tests
+
+      - name: Build Docker image
+        run: docker build -t customer-churn-api:ci .

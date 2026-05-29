@@ -175,6 +175,25 @@ The Docker image includes the current exported model in `models/customer_churn_p
 
 The Docker build uses `requirements-api.txt`, a smaller Linux-safe dependency file for serving. The full `requirements.txt` is your local development environment and may include Windows-only packages.
 
+## CI/CD
+
+GitHub Actions workflow:
+
+```text
+.github/workflows/ci.yml
+```
+
+The CI job:
+
+- installs Linux-safe development dependencies from `requirements-dev.txt`
+- downloads the public Telco churn dataset
+- prepares the processed dataset
+- trains and exports the serving model
+- runs tests
+- builds the Docker image
+
+This keeps large/generated artifacts out of Git while still proving the project can rebuild itself from source.
+
 ## Learning Notes
 
 In a production MLOps project, raw data is usually treated as immutable. We keep the original dataset in `data/raw` and write cleaned versions to `data/processed` so the transformation is repeatable.
