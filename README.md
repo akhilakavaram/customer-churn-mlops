@@ -1,113 +1,155 @@
 # Customer Churn MLOps
 
-An end-to-end MLOps learning project for customer churn prediction.
+[![CI](https://github.com/akhilakavaram/customer-churn-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/akhilakavaram/customer-churn-mlops/actions/workflows/ci.yml)
 
-This project is intentionally built in phases. The goal is not only to train a model, but to learn how ML systems are versioned, tested, packaged, deployed, monitored, and retrained.
+An end-to-end MLOps project that trains, tracks, packages, tests, and serves a customer churn prediction model.
 
-## Phase 1: Local ML Foundation
+The project predicts whether a telecom customer is likely to churn using the public IBM Telco Customer Churn dataset. The focus is not only model accuracy. The main goal is to show a production-style ML workflow: reproducible data preparation, experiment tracking, model artifact export, API serving, Docker packaging, and CI validation.
 
-Current focus:
+## What This Demonstrates
 
-- Load the raw Telco customer churn dataset.
-- Clean obvious data quality issues.
-- Create a processed dataset.
-- Prepare the project for experiment tracking and model training.
+- Reproducible data preprocessing from raw CSV to processed training data
+- Baseline ML training with a full scikit-learn preprocessing and model pipeline
+- MLflow experiment tracking for parameters, metrics, and model artifacts
+- Portable model export for API serving
+- FastAPI inference service with request validation
+- Dockerized model API
+- GitHub Actions CI that rebuilds the pipeline and Docker image
 
-Coming next:
+## Architecture
 
-- Train a baseline model with scikit-learn.
-- Track experiments with MLflow.
-- Save and load model artifacts.
+```mermaid
+flowchart LR
+    A["Public Telco CSV"] --> B["Data preparation"]
+    B --> C["Processed dataset"]
+    C --> D["Training pipeline"]
+    D --> E["MLflow tracking"]
+    D --> F["Exported serving model"]
+    F --> G["FastAPI prediction service"]
+    G --> H["Docker image"]
+    H --> I["Containerized API"]
+    J["GitHub Actions CI"] --> B
+    J --> D
+    J --> H
+```
+
+## Tech Stack
+
+- Python 3.13
+- pandas, scikit-learn
+- MLflow
+- FastAPI, Uvicorn
+- Docker
+- pytest
+- GitHub Actions
 
 ## Project Structure
 
 ```text
 customer-churn-mlops/
-  configs/              # YAML config files
+  .github/workflows/      # CI workflow
+  configs/                # YAML config files
   data/
-    raw/                # Original downloaded datasets
-    processed/          # Cleaned/transformed datasets
-  notebooks/            # Optional exploration notebooks
+    raw/                  # Local raw data, ignored by Git
+    processed/            # Local processed data, ignored by Git
+  models/                 # Exported serving model, ignored by Git
   src/
-    data/               # Data loading and cleaning code
-    features/           # Feature engineering code
-    models/             # Training and inference code
-  tests/                # Automated tests
+    api/                  # FastAPI app
+    data/                 # Data preparation code
+    features/             # Feature engineering placeholder
+    models/               # Training and prediction code
+  tests/                  # Automated tests
+  Dockerfile              # API container image
+  requirements-api.txt    # Linux-safe API runtime dependencies
+  requirements-dev.txt    # Linux-safe CI/test dependencies
+  requirements.txt        # Local Windows development environment
 ```
 
 ## Setup
 
-From this folder:
+Create and activate a virtual environment:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-## Dataset
+If PowerShell blocks activation scripts, allow scripts for the current user:
 
-Download the Telco Customer Churn dataset and place the CSV here:
-
-```text
-data/raw/telco_customer_churn.csv
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-Expected target column:
+## Data
 
-```text
-Churn
+Download the public Telco churn dataset:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv" `
+  -OutFile "data\raw\telco_customer_churn.csv"
 ```
 
-## First Command
-
-After the CSV is in `data/raw`, run:
+Prepare the dataset:
 
 ```powershell
 python -m src.data.prepare_data
 ```
 
-This creates:
+Output:
 
 ```text
 data/processed/churn_cleaned.csv
 ```
 
-## Train The Baseline Model
+## Training
 
-After the processed dataset exists, run:
+Train the baseline model:
 
 ```powershell
 python -m src.models.train_model
 ```
 
-This trains a logistic regression baseline and logs the run to MLflow.
+The training script:
 
-To open the MLflow UI:
+- loads the processed dataset
+- splits train/test data
+- builds a scikit-learn pipeline with preprocessing and logistic regression
+- logs parameters and metrics to MLflow
+- exports a portable serving model to `models/customer_churn_pipeline`
+
+Open MLflow:
 
 ```powershell
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
-Then open:
+Then visit:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-## Run A Sample Prediction
+## Local Prediction
 
-After at least one MLflow training run exists, run:
+Run a sample prediction without the API:
 
 ```powershell
 python -m src.models.predict_model
 ```
 
-This loads the latest model from the `customer-churn-baseline` experiment and predicts churn for one sample customer.
+Example output:
 
-## Run The API
+```text
+Loaded MLflow run ID: ...
+Prediction: 0
+Churn probability: 0.4321
+```
 
-Start the FastAPI service:
+## API
+
+Start the FastAPI app:
 
 ```powershell
 uvicorn src.api.main:app --reload
@@ -119,7 +161,19 @@ Open the interactive docs:
 http://127.0.0.1:8000/docs
 ```
 
-Sample request body for `POST /predict`:
+Health check:
+
+```text
+GET /health
+```
+
+Prediction endpoint:
+
+```text
+POST /predict
+```
+
+Sample request:
 
 ```json
 {
@@ -145,15 +199,25 @@ Sample request body for `POST /predict`:
 }
 ```
 
-## Run With Docker
+Sample response:
 
-Export the serving model by running training once:
+```json
+{
+  "prediction": 0,
+  "churn_probability": 0.4321,
+  "model_run_id": "..."
+}
+```
+
+## Docker
+
+Train once before building so the serving model exists:
 
 ```powershell
 python -m src.models.train_model
 ```
 
-Build the API image:
+Build the image:
 
 ```powershell
 docker build -t customer-churn-api:local .
@@ -171,9 +235,7 @@ Open:
 http://127.0.0.1:8000/docs
 ```
 
-The Docker image includes the current exported model in `models/customer_churn_pipeline`. It does not need local MLflow tracking files such as `mlflow.db` or `mlruns` to serve predictions. If you retrain the model, rebuild the image so the container includes the latest model.
-
-The Docker build uses `requirements-api.txt`, a smaller Linux-safe dependency file for serving. The full `requirements.txt` is your local development environment and may include Windows-only packages.
+The Docker image packages the exported model in `models/customer_churn_pipeline`. It does not need local MLflow tracking files such as `mlflow.db` or `mlruns` to serve predictions.
 
 ## CI/CD
 
@@ -185,23 +247,46 @@ GitHub Actions workflow:
 
 The CI job:
 
-- installs Linux-safe development dependencies from `requirements-dev.txt`
-- downloads the public Telco churn dataset
+- installs Linux-safe dependencies from `requirements-dev.txt`
+- downloads the public dataset
 - prepares the processed dataset
 - trains and exports the serving model
 - runs tests
 - builds the Docker image
 
-This keeps large/generated artifacts out of Git while still proving the project can rebuild itself from source.
+This proves the project can rebuild from source without committing raw datasets, processed datasets, MLflow runs, or model artifacts.
 
-## Learning Notes
+## Tests
 
-In a production MLOps project, raw data is usually treated as immutable. We keep the original dataset in `data/raw` and write cleaned versions to `data/processed` so the transformation is repeatable.
+Run all tests:
 
-The training script saves a full scikit-learn pipeline, not just a classifier. That matters because production requests will still contain raw categorical fields, and the deployed model must apply the same preprocessing used during training.
+```powershell
+python -m pytest tests
+```
 
-The prediction script introduces the inference contract: every prediction request must provide the same feature columns the model saw during training.
+The tests cover:
 
-The API turns that same contract into HTTP JSON. This is the boundary where model code starts becoming a deployable service.
+- data cleaning behavior
+- training helper functions
+- prediction input contract
+- FastAPI health and prediction endpoints
 
-Docker packages that service with its runtime dependencies. This is the first step toward running the same model API in CI, Kubernetes, or a cloud service.
+## Key MLOps Lessons
+
+Raw data should be treated as an input artifact, not manually edited in place. This project keeps raw and processed data separate so preprocessing is repeatable.
+
+The trained model is a full scikit-learn pipeline, not just a classifier. This matters because production requests contain raw categorical fields, and the same preprocessing used during training must be applied during inference.
+
+MLflow tracks experiments and metrics, but the container serves from a portable exported model directory. This avoids environment-specific artifact paths when moving from Windows development to Linux Docker.
+
+The API defines the inference contract. Each prediction request must provide the feature columns the model expects, and FastAPI validates that contract before prediction.
+
+CI rebuilds the data, model, tests, and Docker image from source. That is the difference between a demo notebook and an MLOps system that can be reproduced.
+
+## Roadmap
+
+- Add API observability with Prometheus metrics
+- Add data validation with Great Expectations or pandera
+- Add drift reports with Evidently
+- Add a retraining workflow
+- Deploy to AWS ECS, Azure Container Apps, or Kubernetes
