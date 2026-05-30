@@ -171,7 +171,7 @@ Open:
 http://127.0.0.1:8000/docs
 ```
 
-The Docker image includes the current exported model in `models/customer_churn_pipeline`. If you retrain the model, rebuild the image so the container includes the latest model.
+The Docker image includes the current exported model in `models/customer_churn_pipeline`. It does not need local MLflow tracking files such as `mlflow.db` or `mlruns` to serve predictions. If you retrain the model, rebuild the image so the container includes the latest model.
 
 The Docker build uses `requirements-api.txt`, a smaller Linux-safe dependency file for serving. The full `requirements.txt` is your local development environment and may include Windows-only packages.
 

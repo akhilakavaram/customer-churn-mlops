@@ -11,8 +11,6 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY configs ./configs
 COPY src ./src
-COPY mlflow.db ./mlflow.db
-COPY mlruns ./mlruns
 COPY models ./models
 
 EXPOSE 8000
